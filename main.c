@@ -20,7 +20,7 @@ struct ftp_url parse_ftp_url(const char* url) {
     struct ftp_url ftp_url;
 
     if (strncmp(url, "ftp://\[", 7) == 0) {
-        int r = sscanf(url, "ftp://\[%s:%s@]%[^/]/%s",
+        int r = sscanf(url, "ftp://\[%[^:]:%[^@]@]%[^/]/%s",
                 ftp_url.user, ftp_url.password, ftp_url.host, ftp_url.path);
 
         if (r != 4) {
