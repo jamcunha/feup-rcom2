@@ -25,4 +25,5 @@ test_auth: all
 	./download ftp://[rcom:rcom@]netlab1.fe.up.pt/pipe.txt
 
 clean:
-	rm -f main.o download test.txt
+	rm -f main.o download pub.txt
+	rm -f pipe.txt archlinux-2023.03.01-x86_64.iso crab.mp4 pic1.jpg pic2.png

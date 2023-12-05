@@ -18,13 +18,13 @@
 #define FTP_LOGIN_FAILED        530
 #define FTP_PASSIVE_MODE        227
 #define FTP_OPEN_CONNECTION     150
-#define FTP_TRANSFER_COMPLETE   226
 
 struct ftp_url {
     char        user[256];
     char        password[256];
     char        host[256];
     char        path[256];
+    char        filename[256];
     const char* ip;
 };
 
@@ -43,6 +43,13 @@ struct ftp_url parse_ftp_url(const char* url) {
         if (r != 4) {
             fprintf(stderr, "Invalid ftp url\n");
             exit(-1);
+        }
+
+        if (strchr(ftp_url.path, '/') == NULL) {
+            strcpy(ftp_url.filename, ftp_url.path);
+        } else {
+            char* filename = strrchr(ftp_url.path, '/') + 1;
+            strcpy(ftp_url.filename, filename);
         }
     } else {
         int r = sscanf(url, "ftp://%[^/]/%s",
@@ -96,6 +103,7 @@ int main(int argc, char* argv[]) {
     printf("Password: %s\n", ftp_url.password);
     printf("Host: %s\n", ftp_url.host);
     printf("Path: %s\n", ftp_url.path);
+    printf("Filename: %s\n", ftp_url.filename);
     printf("\n");
 
     struct hostent* h;
@@ -198,7 +206,7 @@ int main(int argc, char* argv[]) {
 
     printf("%s", buffer);
 
-    FILE* file = fopen("test.txt", "wb");
+    FILE* file = fopen(ftp_url.filename, "wb");
 
     if (file == NULL) {
         perror("fopen()");
