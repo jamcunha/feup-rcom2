@@ -12,12 +12,14 @@
 
 #define FTP_PORT                21
 
-#define FTP_READY_USER          220
-#define FTP_READY_PASS          331
-#define FTP_LOGIN_SUCCESS       230
-#define FTP_LOGIN_FAILED        530
-#define FTP_PASSIVE_MODE        227
-#define FTP_OPEN_CONNECTION     150
+typedef enum ftp_response {
+    READY_USER = 220,
+    READY_PASS = 331,
+    LOGIN_SUCCESS = 230,
+    LOGIN_FAILED = 530,
+    PASSIVE_MODE = 227,
+    OPEN_CONNECTION = 150
+} ftp_response_t;
 
 struct ftp_url {
     char        user[256];
@@ -65,6 +67,13 @@ struct ftp_url parse_ftp_url(const char* url) {
     }
 
     return ftp_url;
+}
+
+ftp_response_t get_ftp_response(const char* buffer) {
+    int code;
+
+    sscanf(buffer, "%d", &code);
+    return code;
 }
 
 int create_socket(const char* ip, int port) {
@@ -121,6 +130,7 @@ int main(int argc, char* argv[]) {
     printf("\n--- CONNECTING TO FTP SERVER ---\n\n");
 
     int sockfd = create_socket(ftp_url.ip, FTP_PORT);
+    ftp_response_t res;
 
     char buffer[1024];
 
@@ -129,7 +139,12 @@ int main(int argc, char* argv[]) {
         exit(-1);
     }
 
-    printf("%s", buffer);
+    res = get_ftp_response(buffer);
+
+    if (res != READY_USER) {
+        fprintf(stderr, "Invalid response\n");
+        exit(-1);
+    }
 
     sprintf(buffer, "USER %s\r\n", ftp_url.user);
 
@@ -143,7 +158,12 @@ int main(int argc, char* argv[]) {
         exit(-1);
     }
 
-    printf("%s", buffer);
+    res = get_ftp_response(buffer);
+
+    if (res != READY_PASS) {
+        fprintf(stderr, "Problem when sending user\n");
+        exit(-1);
+    }
 
     sprintf(buffer, "PASS %s\r\n", ftp_url.password);
 
@@ -157,7 +177,12 @@ int main(int argc, char* argv[]) {
         exit(-1);
     }
 
-    printf("%s", buffer);
+    res = get_ftp_response(buffer);
+
+    if (res != LOGIN_SUCCESS) {
+        fprintf(stderr, "Invalid login\n");
+        exit(-1);
+    }
 
     sprintf(buffer, "PASV\r\n");
 
@@ -171,7 +196,12 @@ int main(int argc, char* argv[]) {
         exit(-1);
     }
 
-    printf("%s", buffer);
+    res = get_ftp_response(buffer);
+
+    if (res != PASSIVE_MODE) {
+        fprintf(stderr, "A problem occurred when entering passive mode\n");
+        exit(-1);
+    }
 
     int ip1, ip2, ip3, ip4, port1, port2;
 
@@ -204,7 +234,12 @@ int main(int argc, char* argv[]) {
         exit(-1);
     }
 
-    printf("%s", buffer);
+    res = get_ftp_response(buffer);
+
+    if (res != OPEN_CONNECTION) {
+        fprintf(stderr, "A problem occurred when opening connection\n");
+        exit(-1);
+    }
 
     FILE* file = fopen(ftp_url.filename, "wb");
 
@@ -230,6 +265,8 @@ int main(int argc, char* argv[]) {
             exit(-1);
         }
     }
+
+    printf("File downloaded successfully\n");
 
     if (close(sockfd2) < 0) {
         perror("close()");
