@@ -7,7 +7,7 @@ all: main
 main: main.c
 	$(CC) $(CFLAGS) -c main.c
 
-# Files
+# Files (netlab1.fe.up.pt)
 # - anonymous:anonymous
 #   /pub.txt
 #
@@ -18,12 +18,16 @@ main: main.c
 #   /files/pic1.jpg
 #   /files/pic2.png
 
+# Files (ftp.up.pt)
+# - anonymous:anonymous
+#   /pub/kodi/timestamp.txt
+
 test_anon: all
-	./download ftp://netlab1.fe.up.pt/pub.txt
+	./download ftp://ftp.up.pt/pub/kodi/timestamp.txt
 
 test_auth: all
-	./download ftp://[rcom:rcom@]netlab1.fe.up.pt/pipe.txt
+	./download ftp://[rcom:rcom@]netlab1.fe.up.pt/files/archlinux-2023.03.01-x86_64.iso
 
 clean:
 	rm -f main.o download pub.txt
-	rm -f pipe.txt archlinux-2023.03.01-x86_64.iso crab.mp4 pic1.jpg pic2.png
+	rm -f pipe.txt archlinux-2023.03.01-x86_64.iso crab.mp4 pic1.jpg pic2.png timestamp.txt

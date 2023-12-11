@@ -12,14 +12,7 @@
 
 #define FTP_PORT                21
 
-typedef enum ftp_response {
-    READY_USER = 220,
-    READY_PASS = 331,
-    LOGIN_SUCCESS = 230,
-    LOGIN_FAILED = 530,
-    PASSIVE_MODE = 227,
-    OPEN_CONNECTION = 150
-} ftp_response_t;
+#define BUFFER_SIZE             1024
 
 struct ftp_url {
     char        user[256];
@@ -33,6 +26,22 @@ struct ftp_url {
 struct ftp_passive_mode {
     char        ip[32];
     int         port;
+};
+
+enum ftp_response {
+    READY_USER = 220,
+    READY_PASS = 331,
+    LOGIN_SUCCESS = 230,
+    LOGIN_FAILED = 530,
+    PASSIVE_MODE = 227,
+    OPEN_CONNECTION = 150
+};
+
+enum ftp_res_state {
+    START,
+    SINGLELINE,
+    MULTILINE,
+    END
 };
 
 struct ftp_url parse_ftp_url(const char* url) {
@@ -64,13 +73,53 @@ struct ftp_url parse_ftp_url(const char* url) {
 
         strcpy(ftp_url.user, DEFAULT_USER);
         strcpy(ftp_url.password, DEFAULT_PASSWORD);
+
+        if (strchr(ftp_url.path, '/') == NULL) {
+            strcpy(ftp_url.filename, ftp_url.path);
+        } else {
+            char* filename = strrchr(ftp_url.path, '/') + 1;
+            strcpy(ftp_url.filename, filename);
+        }
     }
 
     return ftp_url;
 }
 
-ftp_response_t get_ftp_response(const char* buffer) {
-    int code;
+enum ftp_response get_ftp_response(int sockfd, char* buffer) {
+    enum ftp_res_state state = START;
+    memset(buffer, 0, BUFFER_SIZE);
+    char c;
+    int code, idx = 0;
+
+    while (state != END) {
+        if (read(sockfd, &c, 1) < 0) {
+            perror("read()");
+            exit(-1);
+        }
+
+        if (state == START) {
+            if (c == ' ') {
+                state = SINGLELINE;
+            } else if (c == '-') {
+                state = MULTILINE;
+            } else if (c == '\n') {
+                state = END;
+            }
+            buffer[idx++] = c;
+        } if (state == SINGLELINE) {
+            if (c == '\n') {
+                state = END;
+            }
+            buffer[idx++] = c;
+        } else if (state == MULTILINE) {
+            if (c == '\n') {
+                memset(buffer, 0, BUFFER_SIZE);
+                idx = 0;
+                state = START;
+            }
+            buffer[idx++] = c;
+        }
+    }
 
     sscanf(buffer, "%d", &code);
     return code;
@@ -130,18 +179,10 @@ int main(int argc, char* argv[]) {
     printf("\n--- CONNECTING TO FTP SERVER ---\n\n");
 
     int sockfd = create_socket(ftp_url.ip, FTP_PORT);
-    ftp_response_t res;
 
-    char buffer[1024];
+    char buffer[BUFFER_SIZE];
 
-    if (read(sockfd, buffer, sizeof(buffer)) < 0) {
-        perror("read()");
-        exit(-1);
-    }
-
-    res = get_ftp_response(buffer);
-
-    if (res != READY_USER) {
+    if (get_ftp_response(sockfd, buffer) != READY_USER) {
         fprintf(stderr, "Invalid response\n");
         exit(-1);
     }
@@ -153,14 +194,7 @@ int main(int argc, char* argv[]) {
         exit(-1);
     }
 
-    if (read(sockfd, buffer, sizeof(buffer)) < 0) {
-        perror("read()");
-        exit(-1);
-    }
-
-    res = get_ftp_response(buffer);
-
-    if (res != READY_PASS) {
+    if (get_ftp_response(sockfd, buffer) != READY_PASS) {
         fprintf(stderr, "Problem when sending user\n");
         exit(-1);
     }
@@ -172,14 +206,7 @@ int main(int argc, char* argv[]) {
         exit(-1);
     }
 
-    if (read(sockfd, buffer, sizeof(buffer)) < 0) {
-        perror("read()");
-        exit(-1);
-    }
-
-    res = get_ftp_response(buffer);
-
-    if (res != LOGIN_SUCCESS) {
+    if (get_ftp_response(sockfd, buffer) != LOGIN_SUCCESS) {
         fprintf(stderr, "Invalid login\n");
         exit(-1);
     }
@@ -191,14 +218,7 @@ int main(int argc, char* argv[]) {
         exit(-1);
     }
 
-    if (read(sockfd, buffer, sizeof(buffer)) < 0) {
-        perror("read()");
-        exit(-1);
-    }
-
-    res = get_ftp_response(buffer);
-
-    if (res != PASSIVE_MODE) {
+    if (get_ftp_response(sockfd, buffer) != PASSIVE_MODE) {
         fprintf(stderr, "A problem occurred when entering passive mode\n");
         exit(-1);
     }
@@ -229,14 +249,7 @@ int main(int argc, char* argv[]) {
         exit(-1);
     }
 
-    if (read(sockfd, buffer, sizeof(buffer)) < 0) {
-        perror("read()");
-        exit(-1);
-    }
-
-    res = get_ftp_response(buffer);
-
-    if (res != OPEN_CONNECTION) {
+    if (get_ftp_response(sockfd, buffer) != OPEN_CONNECTION) {
         fprintf(stderr, "A problem occurred when opening connection\n");
         exit(-1);
     }
