@@ -26,7 +26,7 @@ test_anon: all
 	./download ftp://ftp.up.pt/pub/kodi/timestamp.txt
 
 test_auth: all
-	./download ftp://[rcom:rcom@]netlab1.fe.up.pt/files/archlinux-2023.03.01-x86_64.iso
+	./download ftp://rcom:rcom@netlab1.fe.up.pt/pipe.txt
 
 clean:
 	rm -f main.o download pub.txt

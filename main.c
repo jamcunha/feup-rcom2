@@ -47,32 +47,22 @@ enum ftp_res_state {
 struct ftp_url parse_ftp_url(const char* url) {
     struct ftp_url ftp_url;
 
-    if (strncmp(url, "ftp://\[", 7) == 0) {
-        int r = sscanf(url, "ftp://\[%[^:]:%[^@]@]%[^/]/%s",
+    if (strncmp(url, "ftp://", 6) == 0) {
+        int r = sscanf(url, "ftp://%[^:]:%[^@]@%[^/]/%s",
                 ftp_url.user, ftp_url.password, ftp_url.host, ftp_url.path);
 
         if (r != 4) {
-            fprintf(stderr, "Invalid ftp url\n");
-            exit(-1);
-        }
+            int r = sscanf(url, "ftp://%[^/]/%s",
+                    ftp_url.host, ftp_url.path);
 
-        if (strchr(ftp_url.path, '/') == NULL) {
-            strcpy(ftp_url.filename, ftp_url.path);
-        } else {
-            char* filename = strrchr(ftp_url.path, '/') + 1;
-            strcpy(ftp_url.filename, filename);
-        }
-    } else {
-        int r = sscanf(url, "ftp://%[^/]/%s",
-                ftp_url.host, ftp_url.path);
+            if (r != 2) {
+                fprintf(stderr, "Invalid ftp url\n");
+                exit(-1);
+            }
 
-        if (r != 2) {
-            fprintf(stderr, "Invalid ftp url\n");
-            exit(-1);
+            strcpy(ftp_url.user, DEFAULT_USER);
+            strcpy(ftp_url.password, DEFAULT_PASSWORD);
         }
-
-        strcpy(ftp_url.user, DEFAULT_USER);
-        strcpy(ftp_url.password, DEFAULT_PASSWORD);
 
         if (strchr(ftp_url.path, '/') == NULL) {
             strcpy(ftp_url.filename, ftp_url.path);
